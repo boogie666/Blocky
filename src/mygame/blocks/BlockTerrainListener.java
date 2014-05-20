@@ -4,12 +4,10 @@
  */
 package mygame.blocks;
 
-import mygame.blocks.meshs.Face;
-
 /**
  *
  * @author bogdanpandia
  */
-public interface BlockTextureLocator {
-    public BlockTexture getFaceTexture(Face face);
+public interface BlockTerrainListener {
+    public void onChunkUpdated(ChunkControl c);
 }

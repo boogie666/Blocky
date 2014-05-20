@@ -1,119 +1,225 @@
 package mygame;
 
 import com.jme3.app.SimpleApplication;
+import com.jme3.bullet.BulletAppState;
+import com.jme3.bullet.PhysicsSpace;
+import com.jme3.bullet.collision.shapes.CapsuleCollisionShape;
+import com.jme3.bullet.collision.shapes.MeshCollisionShape;
+import com.jme3.bullet.control.RigidBodyControl;
+import com.jme3.bullet.objects.PhysicsCharacter;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
 import com.jme3.font.BitmapText;
 import com.jme3.input.KeyInput;
+import com.jme3.input.MouseInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
-import com.jme3.light.SpotLight;
+import com.jme3.input.controls.MouseButtonTrigger;
+import com.jme3.light.DirectionalLight;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.FastMath;
 import com.jme3.math.Ray;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
+import com.jme3.scene.shape.Box;
+import com.jme3.system.AppSettings;
+import com.jme3.terrain.heightmap.ImageBasedHeightMap;
 import mygame.blocks.BlockTerrainControl;
+import mygame.blocks.BlockTerrainListener;
+import mygame.blocks.ChunkControl;
 import mygame.util.Vector3Int;
 
 /**
  * test
+ *
  * @author normenhansen
  */
-public class Main extends SimpleApplication {
+public class Main extends SimpleApplication implements ActionListener{
 
     public static void main(String[] args) {
         Main app = new Main();
+        AppSettings settings = new AppSettings(true);
+        app.setSettings(settings);
         app.start();
     }
-    SpotLight sl = new SpotLight();
+        
+    final Box cursorMesh = new Box(.5f, .5f, .5f);
+    BlockTerrainControl blocks;
+    private Vector3f walkDirection = new Vector3f();
+    private PhysicsCharacter player;
+    private boolean left,right,up,down;
 
     @Override
     public void simpleUpdate(float tpf) {
         super.simpleUpdate(tpf); //To change body of generated methods, choose Tools | Templates.
-        sl.setPosition(cam.getLocation());
-        sl.setDirection(cam.getDirection());
+        Vector3f camDir = cam.getDirection().clone().multLocal(0.6f);
+        Vector3f camLeft = cam.getLeft().clone().multLocal(0.4f);
+        walkDirection.set(0,0,0);
+        if(left)
+            walkDirection.addLocal(camLeft);
+        if(right)
+            walkDirection.addLocal(camLeft.negate());
+        if(up)
+            walkDirection.addLocal(camDir);
+        if(down)
+            walkDirection.addLocal(camDir.negate());
+        player.setWalkDirection(walkDirection);
+        cam.setLocation(player.getPhysicsLocation());
     }
+
     
-    
-    
+
     @Override
     public void simpleInitApp() {
+        final BulletAppState bas= new BulletAppState(PhysicsSpace.BroadphaseType.DBVT);
+        bas.setThreadingType(BulletAppState.ThreadingType.PARALLEL);
+        this.stateManager.attach(bas);
+        
         final BlockSettings blockSettings = new BlockSettings(this);
-        blockSettings.setChunkSize(new Vector3Int(16,16,16));
+        blockSettings.setChunkSize(new Vector3Int(16, 16, 16));
+        blockSettings.setBlockSize(1);
         blockSettings.setMaterial(assetManager.loadMaterial("Materials/BlockyTexture.j3m"));
         blockSettings.setWorldSize(new Vector3Int(50, 10, 50));
-        final BlockTerrainControl blocks = new BlockTerrainControl(blockSettings);
+        blockSettings.setViewDistance(200f);
+        blocks = new BlockTerrainControl(blockSettings);
+        
+        this.cam.setFrustumFar(blockSettings.getViewDistance());
+        
+        player = new PhysicsCharacter(new CapsuleCollisionShape(1.5f, 4f), .2f);
+        player.setJumpSpeed(20);
+        player.setFallSpeed(30);
+        player.setGravity(30);
+
+
+        player.setPhysicsLocation(new Vector3f(50, 100, 50));
+        bas.getPhysicsSpace().add(player);
+        
         //geom2.move(8, 0, 0);
-        Node terrain = new Node();
+        final Node terrain = new Node();
         terrain.addControl(blocks);
+        bas.getPhysicsSpace().addAll(terrain);
+        
         blocks.registerBlock(new StoneBlock());
+
+        ImageBasedHeightMap heightmap = new ImageBasedHeightMap(assetManager.loadTexture("Textures/test500x500.jpg").getImage(), .5f);
+        heightmap.load();
+
+        blocks.loadFromHeightMap(new Vector3Int(0, 0, 0),heightmap, StoneBlock.class);
         
-        sl.setSpotInnerAngle(15 * FastMath.DEG_TO_RAD);
-        sl.setSpotOuterAngle(25 * FastMath.DEG_TO_RAD);
-        sl.setSpotRange(30);
-        rootNode.addLight(sl);
-        
-        int size = 50;
-        for(int i=0;i<size*4;i++){
-            for(int j=0;j<20;j++){
-                for(int k =0; k<size*4;k++){
-//                    if(i==j || j==k || i==k){
-//                        continue;
-//                    }
-//                    if(i+j==size || j+k==size || i+k==size ){
-//                        continue;
-//                    }
-                    blocks.setBlock(new Vector3Int(i, j, k), StoneBlock.class);    
+        blocks.addListener(new BlockTerrainListener() {
+            
+            @Override
+            public void onChunkUpdated(ChunkControl c) {
+                Geometry geom = c.getGeometry();
+                RigidBodyControl control = geom.getControl(RigidBodyControl.class);
+                if(control == null){
+                    control = new RigidBodyControl(0);
+                    geom.addControl(control);
+                    bas.getPhysicsSpace().add(control);
                 }
+                control.setCollisionShape(new MeshCollisionShape(geom.getMesh()));
                 
             }
-        }
-        BitmapText hudText = new BitmapText(guiFont, false);          
+        });
+        DirectionalLight sun = new DirectionalLight();
+        sun.setDirection(new Vector3f(-5, -4, -4).normalizeLocal());
+        
+        rootNode.addLight(sun);
+//        sl.setSpotInnerAngle(50 * FastMath.DEG_TO_RAD);
+//        sl.setSpotOuterAngle(90 * FastMath.DEG_TO_RAD);
+//        sl.setSpotRange(blockSettings.getViewDistance() - 10);
+//        rootNode.addLight(sl);
+
+//        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
+//        FogFilter fog = new FogFilter(ColorRGBA.Black, 1f, blockSettings.getViewDistance()-10);
+//        fpp.addFilter(fog);
+//        viewPort.addProcessor(fpp);
+        
+        BitmapText hudText = new BitmapText(guiFont, false);
         hudText.setSize(guiFont.getCharSet().getRenderedSize());      // font size
         hudText.setColor(ColorRGBA.White);                             // font color
         hudText.setText("+");             // the text
-        hudText.setLocalTranslation(this.settings.getWidth()/2, this.settings.getHeight()/2 + hudText.getLineHeight(), 0); // position
+        hudText.setLocalTranslation(this.settings.getWidth() / 2 - hudText.getLineWidth()/2, this.settings.getHeight() / 2 + hudText.getLineHeight(), 0); // position
+        
+        
         guiNode.attachChild(hudText);
 
-//        mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
-        
         rootNode.attachChild(terrain);
-        flyCam.setMoveSpeed(50);
-        viewPort.setBackgroundColor(ColorRGBA.Blue);
+        
+        
+        flyCam.setMoveSpeed(20);
+        viewPort.setBackgroundColor(ColorRGBA.Black);
         inputManager.addListener(new ActionListener() {
             int count = 50;
             int up = 50;
             int multiplier = 1;
+
             public void onAction(String name, boolean isPressed, float tpf) {
-                if(!isPressed){
+                if (!isPressed) {
                     return;
                 }
                 CollisionResults results = new CollisionResults();
-                // Convert screen click to 3d position
+                
                 Vector3f click3d = cam.getWorldCoordinates(new Vector2f(cam.getWidth() / 2, cam.getHeight() / 2), 0f).clone();
                 Vector3f dir = cam.getWorldCoordinates(new Vector2f(cam.getWidth() / 2, cam.getHeight() / 2), 1f).subtractLocal(click3d).normalizeLocal();
-                // Aim the ray from the clicked spot forwards.
+                
                 Ray ray = new Ray(click3d, dir);
-                // Collect intersections between ray and all nodes in results list.
-                rootNode.collideWith(ray, results);
+                
+                terrain.collideWith(ray, results);
+                
                 CollisionResult result = results.getClosestCollision();
-                if(result != null){
+                if (result != null) {
                     Vector3f position = result.getContactPoint();
                     Vector3Int blockPosition = blocks.getPointedBlockLocation(position, true);
-
-                    System.out.println(blockPosition);
                     blocks.setBlock(blockPosition, StoneBlock.class);
-//                    c.removeBlock(blockPosition);
                 }
-        
-                
+
+
             }
         }, "toggle");
-        inputManager.addMapping("toggle", new KeyTrigger(KeyInput.KEY_SPACE));
-        
-    }
- 
-}
+        inputManager.addMapping("toggle", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        setupKeys();
 
+    }
+    
+    private void setupKeys() {
+        inputManager.addMapping("Lefts", new KeyTrigger(KeyInput.KEY_A));
+        inputManager.addMapping("Rights", new KeyTrigger(KeyInput.KEY_D));
+        inputManager.addMapping("Ups", new KeyTrigger(KeyInput.KEY_W));
+        inputManager.addMapping("Downs", new KeyTrigger(KeyInput.KEY_S));
+        inputManager.addMapping("Space", new KeyTrigger(KeyInput.KEY_SPACE));
+        inputManager.addListener(this,"Lefts");
+        inputManager.addListener(this,"Rights");
+        inputManager.addListener(this,"Ups");
+        inputManager.addListener(this,"Downs");
+        inputManager.addListener(this,"Space");
+    }
+
+    public void onAction(String binding, boolean value, float tpf) {
+
+        if (binding.equals("Lefts")) {
+            if(value)
+                left=true;
+            else
+                left=false;
+        } else if (binding.equals("Rights")) {
+            if(value)
+                right=true;
+            else
+                right=false;
+        } else if (binding.equals("Ups")) {
+            if(value)
+                up=true;
+            else
+                up=false;
+        } else if (binding.equals("Downs")) {
+            if(value)
+                down=true;
+            else
+                down=false;
+        } else if (binding.equals("Space")) {
+            player.jump();
+        }
+    }
+}

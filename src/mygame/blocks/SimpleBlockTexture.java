@@ -4,6 +4,8 @@
  */
 package mygame.blocks;
 
+import mygame.blocks.meshs.Face;
+
 /**
  *
  * @author bogdanpandia

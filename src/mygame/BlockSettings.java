@@ -17,7 +17,8 @@ public class BlockSettings{
     private Vector3Int chunkSize;
     private Material material;
     private final Application application;
-    private float blockSize = .5f;
+    private float blockSize = 1f;
+    private float viewDistance = 200f;
 
     public BlockSettings(Application application) {
         this.application = application;
@@ -66,6 +67,13 @@ public class BlockSettings{
     public float getBlockSize() {
         return blockSize;
     }
+
+    public void setViewDistance(float viewDistance) {
+        this.viewDistance = viewDistance;
+    }
     
+    public float getViewDistance() {
+        return this.viewDistance;
+    }
     
 }

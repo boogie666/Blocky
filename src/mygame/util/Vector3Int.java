@@ -1,5 +1,7 @@
 package mygame.util;
 
+import com.jme3.math.Vector3f;
+
 /**
  *
  * @author bogdan
@@ -104,6 +106,16 @@ public class Vector3Int{
 
     public int getZ() {
         return z;
+    }
+    
+    public void set(int x, int y, int z){
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+    
+    public Vector3f toVector3f(){
+        return new Vector3f(x, y, z);
     }
 
     @Override

@@ -1,4 +1,4 @@
-package mygame.blocks;
+package mygame.blocks.meshs;
 
 import com.jme3.math.Vector3f;
 import mygame.util.Vector3Int;
