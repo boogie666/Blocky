@@ -15,19 +15,15 @@ import mygame.blocks.Block;
 import mygame.blocks.BlockTexture;
 import mygame.blocks.BlockTextureLocator;
 import mygame.util.Vector3Int;
-import org.apache.commons.collections.primitives.ArrayFloatList;
-import org.apache.commons.collections.primitives.ArrayIntList;
-import org.apache.commons.collections.primitives.FloatList;
-import org.apache.commons.collections.primitives.IntList;
 
 /**
  *
- * @author bogdanpandia
+ * @author bogdan
  */
 public class FaceCullMeshGenerator implements MeshGenerator {
     private final List<Vector3f> verts = new ArrayList<Vector3f>();
-    private final IntList indices = new ArrayIntList();
-    private final FloatList normals = new ArrayFloatList();
+    private final List<Integer> indices = new ArrayList<Integer>();
+    private final List<Float> normals = new ArrayList<Float>();
     private final List<Vector2f> textureCoords = new ArrayList<Vector2f>();
     private final Vector3Int size;
     private final float blockSize;
@@ -85,9 +81,9 @@ public class FaceCullMeshGenerator implements MeshGenerator {
             }
         }
         Vector3f[] vertsArray = new Vector3f[this.verts.size()];
-        int[] indicesArray = this.indices.toArray();
+        int[] indicesArray = makeArray(this.indices);
         Vector2f[] textureCoordsArray = new Vector2f[this.textureCoords.size()];
-        float[] normalsArray = this.normals.toArray();
+        float[] normalsArray = makeFloatArray(this.normals);
 
         Mesh m = new Mesh();
         m.setBuffer(VertexBuffer.Type.Position, 3, BufferUtils.createFloatBuffer(verts.toArray(vertsArray)));
@@ -101,6 +97,7 @@ public class FaceCullMeshGenerator implements MeshGenerator {
         normals.clear();
 
         m.updateBound();
+        m.setStatic();
         return m;
     }
 
@@ -137,9 +134,9 @@ public class FaceCullMeshGenerator implements MeshGenerator {
         }
         Vector3Int normal = face.getOffset();
         for (int i = 0; i < 4; i++) {
-            normals.add(normal.getX());
-            normals.add(normal.getY());
-            normals.add(normal.getZ());
+            normals.add((float)normal.getX());
+            normals.add((float)normal.getY());
+            normals.add((float)normal.getZ());
         }
     }
 
@@ -164,5 +161,21 @@ public class FaceCullMeshGenerator implements MeshGenerator {
         float x = (((column + addX) * textureUnit));
         float y = ((((-1 * row) + (addY - 1)) * textureUnit) + 1);
         return new Vector2f(x, y);
+    }
+
+    private static int[] makeArray(List<Integer> indices) {
+        int[] array = new int[indices.size()];
+        for(int i=0;i<array.length; i++){
+            array[i] = indices.get(i);
+        }
+        return array;
+    }
+
+    private static float[] makeFloatArray(List<Float> normals) {
+        float[] array = new float[normals.size()];
+        for(int i=0;i<array.length; i++){
+            array[i] = normals.get(i);
+        }
+        return array;
     }
 }

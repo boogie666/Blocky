@@ -20,11 +20,13 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.Ray;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
+import com.jme3.post.FilterPostProcessor;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.shape.Box;
 import com.jme3.system.AppSettings;
 import com.jme3.terrain.heightmap.ImageBasedHeightMap;
+import com.jme3.water.WaterFilter;
 import mygame.blocks.BlockTerrainControl;
 import mygame.blocks.BlockTerrainListener;
 import mygame.blocks.ChunkControl;
@@ -78,7 +80,7 @@ public class Main extends SimpleApplication implements ActionListener{
         
         final BlockSettings blockSettings = new BlockSettings(this);
         blockSettings.setChunkSize(new Vector3Int(16, 16, 16));
-        blockSettings.setBlockSize(1);
+        blockSettings.setBlockSize(2);
         blockSettings.setMaterial(assetManager.loadMaterial("Materials/BlockyTexture.j3m"));
         blockSettings.setWorldSize(new Vector3Int(50, 10, 50));
         blockSettings.setViewDistance(200f);
@@ -131,10 +133,11 @@ public class Main extends SimpleApplication implements ActionListener{
 //        sl.setSpotRange(blockSettings.getViewDistance() - 10);
 //        rootNode.addLight(sl);
 
-//        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
-//        FogFilter fog = new FogFilter(ColorRGBA.Black, 1f, blockSettings.getViewDistance()-10);
-//        fpp.addFilter(fog);
-//        viewPort.addProcessor(fpp);
+        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
+        WaterFilter water = new WaterFilter(rootNode, sun.getDirection());
+        water.setWaterHeight(5);
+        fpp.addFilter(water);
+        viewPort.addProcessor(fpp);
         
         BitmapText hudText = new BitmapText(guiFont, false);
         hudText.setSize(guiFont.getCharSet().getRenderedSize());      // font size
@@ -171,8 +174,8 @@ public class Main extends SimpleApplication implements ActionListener{
                 CollisionResult result = results.getClosestCollision();
                 if (result != null) {
                     Vector3f position = result.getContactPoint();
-                    Vector3Int blockPosition = blocks.getPointedBlockLocation(position, true);
-                    blocks.setBlock(blockPosition, StoneBlock.class);
+                    Vector3Int blockPosition = blocks.getPointedBlockLocation(position, false);
+                    blocks.removeBlock(blockPosition);
                 }
 
 
